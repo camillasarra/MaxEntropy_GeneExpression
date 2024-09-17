@@ -1,34 +1,28 @@
-import numpy as np
-from matplotlib import pyplot as plt
-
-from pathlib import Path
-import tensorflow as tf
-from tqdm import trange
-import itertools
-import bottleneck as bn
-import scipy.io
-
-import pandas as pd
-# np.object = object
-# np.bool = bool 
-# np.int = int 
-from sklearn.neural_network import MLPClassifier
-import sklearn
-from tqdm import trange
-
 import anndata as ad
-from scipy.sparse import csr_matrix
-from statistics import mode
-import requests
-import json
-import os
-import pathlib
-import subprocess
-import time
+import bottleneck as bn
 import h5py
+import itertools
+import json
+from matplotlib import pyplot as plt
+import numpy as np
+import os
+import pandas as pd
+import pathlib
+from pathlib import Path
+import requests
+import scipy.io
+from scipy.sparse import csr_matrix
+import sklearn
+from sklearn.neural_network import MLPClassifier
+from statistics import mode
+import subprocess
+import tensorflow as tf
+import time
+from tqdm import trange
 
-DATA_PATH = '' # TODO: enter here data path
-
+# ___________________________________________________________________________________________
+DATA_PATH = '' # TODO: enter here the data path
+# ___________________________________________________________________________________________
 
 def get_hJ(q,d):
     h = q[:d]
@@ -37,9 +31,11 @@ def get_hJ(q,d):
     J = (J + J.T)/2
     return h,J
 
+# NOTE: q is related to the Ising model parameters through a factor d
 def get_H(x,J,h):
     num_part,d = x.shape
     return tf.reduce_sum(x*h + x * tf.reduce_sum(J[None,:,:] * x[:,:,None],1),1)/d
+
 
 @tf.function
 def one_step_MC(x, h,J,Hx):
@@ -56,6 +52,7 @@ def one_step_MC(x, h,J,Hx):
     Hx = Hy*tf.cast(r<-DH, dtype=tf.float64) + Hx*tf.cast(r>=-DH, dtype=tf.float64)
     return x, Hx
 
+
 def thermalize(x, J,h, NumSteps = 1000, crange=tf.range):
     num_part,d = x.shape
     Hx = get_H(x,J,h)
@@ -65,12 +62,14 @@ def thermalize(x, J,h, NumSteps = 1000, crange=tf.range):
         energy_history = tf.concat((energy_history,tf.reduce_mean(Hx, keepdims=True) ),0)  
     return x, energy_history
 
+
 def step(q,x,J,h,f_data, n_step_thermalize, n_step_compute_f,n_step_decorrelate, optimizer):
     x, energy_history = thermalize(x,J,h,NumSteps=n_step_thermalize)
     x, f = compute_f(x,J,h,StepsTherm=n_step_decorrelate,NumSteps=n_step_compute_f) 
     delta_q = f-f_data
     optimizer.apply_gradients(zip([-delta_q],[q]))
     return x, f
+
 
 def compute_f(x, J,h, NumSteps=1000, StepsTherm=5, crange=tf.range):
     num_part,d = x.shape
@@ -93,6 +92,7 @@ def get_f_data(data,d):
     f_data = np.concatenate((datamean, data_mom2))  
     return f_data
 
+
 def get_errorfdata(data,d):
     f =[]
     for _ in range(10):
@@ -102,6 +102,7 @@ def get_errorfdata(data,d):
     error = f.std(0)
     return error
 
+
 def initialize_q(f_data,d):
     corr_conn = f_data[d:] - np.array((f_data[:d][:,None]*f_data[:d][None,:]))[np.triu_indices(d, k=1)[0],np.triu_indices(d, k=1)[1]]
     q=np.zeros(len(f_data))
@@ -109,6 +110,7 @@ def initialize_q(f_data,d):
     q[:d] = - f_data[:d]
     q*=d
     return q
+
 
 def load_data(path):
     data_tot = scipy.io.loadmat(path)
@@ -122,6 +124,7 @@ def load_data(path):
     rna = np.argsort(totnum)[::-1]  # RNA names ordered from the most frequent
     return count_right, rna
 
+
 def get_points_fdata(indices, count,rna, d):
     points_data = count[:, rna[indices]]
     points_data = np.sign(points_data - points_data.mean(0))
@@ -130,7 +133,37 @@ def get_points_fdata(indices, count,rna, d):
     f_data = tf.convert_to_tensor(f_data,dtype=tf.float64)   
     return points_data, f_data
 
-#-------------------------------------------------- SMALL
+
+# function that given a state and q returns the corresponding minimum
+def get_minimum(x0, q):
+    d = len(x0)
+
+    x = np.copy(x0)
+    actual_energy=[]
+    h,J = get_hJ(q,d)
+    actual_energy.append(get_H(x0[None,:],J,h)[0])
+
+    for _ in range(100000):  #steps allowed to find a minimum  
+        xx = np.repeat(x[None,:],d,0) 
+
+        num_part,d = xx.shape
+        indices_sel = range(num_part)
+        Dh_h = tf.gather(h, indices_sel)
+        Dh_J = tf.reduce_sum(tf.gather(J, indices_sel, batch_dims=0)*xx,1)
+        DH = -2 * tf.gather(xx,indices_sel, batch_dims=1)*(Dh_h + 2*Dh_J)/d
+
+        DH = np.array(DH)
+        if DH.min()<0:
+            isel = np.argmin(DH)
+            x[isel]*=-1
+            actual_energy.append(actual_energy[-1]+DH[isel])
+        else:     
+            return x
+
+        
+        
+# ___________________________________________________________________________________________
+#-----------------------------------  Small systems (exact averages instead of MC simulation)
 def find_parameters(d,q, f_data, f_model, adam_step = 1e-1, num_steps=20000):
     optimizer = tf.optimizers.Adam(adam_step)
     @tf.function
@@ -169,107 +202,7 @@ def get_f_model1(d,q):
     f_model = tf.reduce_sum(v_points*p[:,None],0)
     return f_model
 
-
-#----------------------------------------------------------------------------
-# function that given a state and q returns the corresponding minimum
-def get_minimum(x0, q):
-    d = len(x0)
-
-    x = np.copy(x0)
-    actual_energy=[]
-    h,J = get_hJ(q,d)
-    actual_energy.append(get_H(x0[None,:],J,h)[0])
-
-    for _ in range(100000):  #steps allowed to find a minimum  
-        xx = np.repeat(x[None,:],d,0) 
-
-        num_part,d = xx.shape
-        indices_sel = range(num_part)
-        Dh_h = tf.gather(h, indices_sel)
-        Dh_J = tf.reduce_sum(tf.gather(J, indices_sel, batch_dims=0)*xx,1)
-        DH = -2 * tf.gather(xx,indices_sel, batch_dims=1)*(Dh_h + 2*Dh_J)/d
-
-        DH = np.array(DH)
-        if DH.min()<0:
-            isel = np.argmin(DH)
-            x[isel]*=-1
-            actual_energy.append(actual_energy[-1]+DH[isel])
-        else:     
-            return x
-        
-# ------------------- MONASSON
-def monasson_hj(mu, c):
-    d = len(mu)
-    
-    L = 1- mu**2
-    K = c/(L[:,None]*L[None,:])
-
-    # -------------------------------- find J
-    M = K*np.sqrt(L[:,None]*L[None,:])
-    M[range(d),range(d)] = 0
-
-    J_1l = np.sqrt(L[:,None]*L[None,:])*np.dot(M,np.linalg.inv(np.eye(d)+M))
-    J_2s = ((1/4*np.log((1+ K*(1+mu)[:,None]*(1+mu)[None,:])*(1+ K*(1-mu)[:,None]*(1-mu)[None,:])/(1- K*(1-mu)[:,None]*(1+mu)[None,:])/(1- K*(1+mu)[:,None]*(1-mu)[None,:]))))
-    J3 = K/(1-K**2*L[:,None]*L[None,:])
-    J = J_1l+J_2s -J3
-    J[range(d),range(d)]=0
-
-    if np.isnan(J).sum()!=0:
-        print('error in J')
-        
-    # -------------------------------- find h
-    h1 = 1/2*np.log((1+mu)/(1-mu))
-
-    h2 = np.zeros(d)
-    for l in trange(d):
-        t2=0
-        for j in range(d):
-            t2+=J[l,j]*mu[j]
-        h2[l]=t2
-
-    h3 = np.zeros(d)
-    for l in trange(d):
-        t3=0
-        for j in range(d):
-            if j!=l:
-                t3+= K[l,j]**2 * mu[l]*L[j]
-        h3[l]=t3   
-
-    h = h1-h2+h3    
-    
-    return h,J
-
-
-
-# ----------------------------------- HOPFIELD Monasson
-def hopfield_hj(mu,c, p1,p2):
-    d = len(mu)
-    c_cc = c/np.sqrt((1-mu**2)[:,None]*(1-mu**2)[None,:]) 
-    spectrum, eigvects = np.linalg.eig(c_cc)
-    eigvects = eigvects[np.argsort(spectrum)[::-1]]
-    spectrum = spectrum[np.argsort(spectrum)[::-1]]
    
-    plt.plot(spectrum,'o')
-    plt.plot((range(len(spectrum)))[:p1], spectrum[:p1],'o', color='red')
-    plt.plot((range(len(spectrum)))[-p2:],spectrum[-p2:],'o', color='orange')
-    plt.axhline(1)
-    print(f'eigenvalues larger than 1 : {(spectrum>1).sum()}')
-    print(f'eigenvalues smaller than 1: {(spectrum<1).sum()}')
-    plt.xlabel('i')
-    plt.ylabel(r'$\lambda_i$')
-    
-    xi1 = (np.sqrt(d*(1-1/spectrum[:p1]))[:,None]*eigvects[:p1]/np.sqrt(1-mu**2))
-    xi2 = (np.sqrt(d*(-1+1/spectrum[-p2:]))[:,None]*eigvects[-p2:]/np.sqrt(1-mu**2))
-    
-    J_h = (xi1[:,None,:]*xi1[:,:,None]).sum(0)/d -  (xi2[:,None,:]*xi2[:,:,None]).sum(0)/d 
-    J_h[range(d),range(d)]=0
-
-    h_h = np.arctanh(mu) - np.dot(J_h,mu)
-    
-    return h_h, J_h, xi1,xi2
-
-
-#--------------------------------- small ising model
 def get_qsmall(data, d, num_steps=5000):
     f_data = get_f_data(data,d)
     # ----  Monasson parameters
@@ -308,7 +241,7 @@ def get_qsmall(data, d, num_steps=5000):
     plt.tight_layout()
     
     return np.array(q)
-# ----------------------------------------------
+
 def small_analysis(data, d, q):
     f_data = get_f_data(data,d)    
     # PROBABILITY
@@ -372,8 +305,6 @@ def small_analysis(data, d, q):
     plt.tight_layout()
     plt.show()
 
-
-
     # find local minima
     minima =[]
     for cell in trange(len(all_points)):
@@ -397,6 +328,8 @@ def small_analysis(data, d, q):
     
     return p, lst, basin
 
+
+
 def get_z(d,q):
     all_points = get_p(d)
     mixed = ((all_points[:,None,:]*all_points[:,:,None])[:,np.triu_indices(d, k=1)[0],np.triu_indices(d, k=1)[1]])
@@ -405,13 +338,74 @@ def get_z(d,q):
     p = tf.exp(-h); 
     z=tf.reduce_sum(p)
     return z
+     
+    
+    
+# # ___________________________________________________________________________________________
+# #-------------------------------------------------- Approximated methods - Monasson         
+# def monasson_hj(mu, c):
+#     d = len(mu)
+    
+#     L = 1- mu**2
+#     K = c/(L[:,None]*L[None,:])
 
+#     # -------------------------------- find J
+#     M = K*np.sqrt(L[:,None]*L[None,:])
+#     M[range(d),range(d)] = 0
 
+#     J_1l = np.sqrt(L[:,None]*L[None,:])*np.dot(M,np.linalg.inv(np.eye(d)+M))
+#     J_2s = ((1/4*np.log((1+ K*(1+mu)[:,None]*(1+mu)[None,:])*(1+ K*(1-mu)[:,None]*(1-mu)[None,:])/(1- K*(1-mu)[:,None]*(1+mu)[None,:])/(1- K*(1+mu)[:,None]*(1-mu)[None,:]))))
+#     J3 = K/(1-K**2*L[:,None]*L[None,:])
+#     J = J_1l+J_2s -J3
+#     J[range(d),range(d)]=0
 
-    ## ---------------------------------------------------
-    ## ---------------------------------------------------
-    ## ---------------------------------------------------
-    ## ---------------------------------------------------
+#     if np.isnan(J).sum()!=0:
+#         print('error in J')
+        
+#     # -------------------------------- find h
+#     h1 = 1/2*np.log((1+mu)/(1-mu))
+
+#     h2 = np.zeros(d)
+#     for l in trange(d):
+#         t2=0
+#         for j in range(d):
+#             t2+=J[l,j]*mu[j]
+#         h2[l]=t2
+
+#     h3 = np.zeros(d)
+#     for l in trange(d):
+#         t3=0
+#         for j in range(d):
+#             if j!=l:
+#                 t3+= K[l,j]**2 * mu[l]*L[j]
+#         h3[l]=t3   
+
+#     h = h1-h2+h3    
+    
+#     return h,J
+
+# # ----------------------------------- HOPFIELD Monasson
+# def hopfield_hj(mu,c, p1,p2):
+#     d = len(mu)
+#     c_cc = c/np.sqrt((1-mu**2)[:,None]*(1-mu**2)[None,:]) 
+#     spectrum, eigvects = np.linalg.eig(c_cc)
+#     eigvects = eigvects[np.argsort(spectrum)[::-1]]
+#     spectrum = spectrum[np.argsort(spectrum)[::-1]]
+#     plt.plot(spectrum,'o')
+#     plt.plot((range(len(spectrum)))[:p1], spectrum[:p1],'o', color='red')
+#     plt.plot((range(len(spectrum)))[-p2:],spectrum[-p2:],'o', color='orange')
+#     plt.axhline(1)
+#     print(f'eigenvalues larger than 1 : {(spectrum>1).sum()}')
+#     print(f'eigenvalues smaller than 1: {(spectrum<1).sum()}')
+#     plt.xlabel('i')
+#     plt.ylabel(r'$\lambda_i$')
+#     xi1 = (np.sqrt(d*(1-1/spectrum[:p1]))[:,None]*eigvects[:p1]/np.sqrt(1-mu**2))
+#     xi2 = (np.sqrt(d*(-1+1/spectrum[-p2:]))[:,None]*eigvects[-p2:]/np.sqrt(1-mu**2))
+#     J_h = (xi1[:,None,:]*xi1[:,:,None]).sum(0)/d -  (xi2[:,None,:]*xi2[:,:,None]).sum(0)/d 
+#     J_h[range(d),range(d)]=0
+#     h_h = np.arctanh(mu) - np.dot(J_h,mu)
+#     return h_h, J_h, xi1,xi2
+# ___________________________________________________________________________________________
 
 
 def LOAD_DATA():
@@ -426,7 +420,7 @@ def LOAD_DATA():
     version = '20231215'
     f = open('../../../../scratch/network/csarra/manifest.json')
     manifest = json.load(f)
-#     print("version: ", manifest['version'])
+    #     print("version: ", manifest['version'])
     ## ---------------------------------------------------
     ##----- (1/2) additional information on cluster
     file = '../../../../scratch/network/csarra/cluster_to_cluster_annotation_membership_pivoted.csv'
@@ -478,7 +472,6 @@ def LOAD_DATA():
     # volumes = np.nanmean(data/(2**datalog-1),1) ### only for fraction
     del data
     del datalog
-
     # ____________________________________________________________________________
     # SELECT THE REGION OF THE BRAIN
     # section_names  = list(dict.fromkeys(metadata.brain_section_label.values))[56:58]
@@ -487,7 +480,7 @@ def LOAD_DATA():
     pred = [x in section_names for x in metadata_extended['brain_section_label']]
     # pred = [x<10 for x in range(len(metadata_extended))]
     sections = metadata_extended[pred] # this is (num_cells)x21
-#     print(np.array(pred).sum())
+    #     print(np.array(pred).sum())
     #-------------------
     gnames = gene['gene_symbol'].values[:510]
     pred = [x in gnames for x in adata.var.gene_symbol]
