@@ -23,7 +23,9 @@ Install the requirements in the `requirements.txt` file with the command
 pip install -r requirements.txt
 ```
 
-Note: this code has been tested on python 3.8.18.
+Note: this code has been tested on python 3.8.18 and tensorflow 2.4.1. <br>
+Note: this code uses the tensorflow package. It's recommended to install it manually according to the system specifics as described [here](https://www.tensorflow.org/install)
+
 
 Please take a look at the `tutorial.ipynb` notebook for an example of how to find the Ising model parameters given the experimental averages.
 
