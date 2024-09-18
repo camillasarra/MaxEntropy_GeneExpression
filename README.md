@@ -30,7 +30,7 @@ Note: this code uses the tensorflow package. It's recommended to install it manu
 Please take a look at the `tutorial.ipynb` notebook for an example of how to find the Ising model parameters given the experimental averages.
 
 
-Given a file 'f_data_D_LABEL.dat', where D is the number of variables and LABEL a label, you can get the Ising model parameters using for example
+Given a file `f_data_D_LABEL.dat`, where D is the number of variables and LABEL a label, you can get the Ising model parameters using for example
 ```
 find_ising.py -d D -label LABEL -n_thermalize 2000 -n_steps 5000 -adam_step 1e-3
 ```
@@ -38,6 +38,7 @@ find_ising.py -d D -label LABEL -n_thermalize 2000 -n_steps 5000 -adam_step 1e-3
 This will produce 
 -  `q_D_LABEL.dat` with the concatenated Ising parameters (size $D+\frac{D(D-1)}{2}$, where the first D lines are the external fields $h_1, \ldots h_D$,  and the remaining are the interactions $J_{1,2}, ... J_{d-1, d}$ ). The parameters can be obtained using
 ```python
+q = np.loadtxt('q_D_LABEL.dat')
 h, J = get_hJ(q,D)
 ```
 -  `evolutions_D_LABEL.pdf` with some plots of the paramaters evolution
