@@ -3,9 +3,11 @@
 							src="https://img.shields.io/badge/physics.bio--ph-arXiv%3A2408.08037-B31B1B.svg" class="plain" style="height:25px;" /></a>
 
 
+This code reproduces the results of the paper [_Maximum entropy models for patterns of gene expression_](https://www.arxiv.org/abs/2408.08037) by Camilla Sarra, Leopoldo Sarra, Luca Di Carlo, Trevor GrandPre, Yaojun Zhang, Curtis G. Callan Jr., William Bialek.
+
 ## Inverse Ising problem 
 
-Goal: find the maximum entropy model compatible with experimental means and correlations of binarized gene expression levels. <br>
+**Goal**: find the maximum entropy model compatible with experimental means and correlations of binarized gene expression levels. <br>
 
 Steps: <br>
 - start from experimental raw counts x
