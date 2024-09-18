@@ -23,6 +23,8 @@ Install the requirements in the `requirements.txt` file with the command
 pip install -r requirements.txt
 ```
 
+Note: this code has been tested on python 3.8.18.
+
 Please take a look at the `tutorial.ipynb` notebook for an example of how to find the Ising model parameters given the experimental averages.
 
 
