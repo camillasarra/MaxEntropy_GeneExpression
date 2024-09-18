@@ -1,0 +1,13 @@
+anndata
+h5py
+json
+matplotlib
+numpy
+os
+pandas
+pathlib
+scipy
+sklearn
+statistics 
+tensorflow 
+tqdm
