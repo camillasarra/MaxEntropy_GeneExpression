@@ -3,15 +3,8 @@ import h5py
 import json
 from matplotlib import pyplot as plt
 import numpy as np
-import os
 import pandas as pd
-import pathlib
-from pathlib import Path
 import scipy.io
-from scipy.sparse import csr_matrix
-import sklearn
-from sklearn.neural_network import MLPClassifier
-from statistics import mode
 import tensorflow as tf
 from tqdm import trange
 
