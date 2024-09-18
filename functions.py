@@ -1,7 +1,5 @@
 import anndata as ad
-import bottleneck as bn
 import h5py
-import itertools
 import json
 from matplotlib import pyplot as plt
 import numpy as np
@@ -9,15 +7,12 @@ import os
 import pandas as pd
 import pathlib
 from pathlib import Path
-import requests
 import scipy.io
 from scipy.sparse import csr_matrix
 import sklearn
 from sklearn.neural_network import MLPClassifier
 from statistics import mode
-import subprocess
 import tensorflow as tf
-import time
 from tqdm import trange
 
 # ___________________________________________________________________________________________

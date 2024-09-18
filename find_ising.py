@@ -1,37 +1,37 @@
-# Inverse Ising code. Given the experimental means and correlations, get the parameters of the corresponding Ising model.
-# d: number of variables
-# label: any string. In the paper context, it can be either 'all' or a number indicating the class
+'''
+Inverse Ising code. Given the experimental means and correlations, get the parameters of the corresponding Ising model.
+d: number of variables
+label: any string. In the paper context, it can be either 'all' or a number indicating the class
 
-# *****************************************************************************************************
-# *** INPUT: file "f_data_{d}_{label}.dat" 
-# Note: f_data must have shape d+ d(d-1)/2 and contain the concatenated means and unique correlations [<x_1>, ..., <x_d>, <x_1 x_2>, <x_1 x_3>, ... <x_{d-1} x_d>]
+*****************************************************************************************************
+*** INPUT: file "f_data_{d}_{label}.dat" 
+Note: f_data must have shape d+ d(d-1)/2 and contain the concatenated means and unique correlations [<x_1>, ..., <x_d>, <x_1 x_2>, <x_1 x_3>, ... <x_{d-1} x_d>]
 
-# other optional inputs:
-# - "f_dataERR_{d}_{label}.dat" with the experimental error on the averages
-# - "histosum_{d}_{label}.dat" histogram of experimental sum distribution
-# - "histosum_{d}_{label}.dat" histogram of sum distribution of shuffled experimental data
+other optional inputs:
+- "f_dataERR_{d}_{label}.dat" with the experimental error on the averages
+- "histosum_{d}_{label}.dat" histogram of experimental sum distribution
+- "histosum_{d}_{label}.dat" histogram of sum distribution of shuffled experimental data
 
 
-# *****************************************************************************************************
-# *** OUTPUT: file "evolution_{d}_{label}.pdf" and "q_{d}_{label}.dat"
+*****************************************************************************************************
+*** OUTPUT: file "evolution_{d}_{label}.pdf" and "q_{d}_{label}.dat"
 
-# Note: q will have shape d+ d(d-1)/2 and must be divided by d
+Note: q will have shape d+ d(d-1)/2 and must be divided by d
 
-#Note: the pdf file will have these pictures:
-# a. Temporal evolution of ||f_{data} - f_{model}||^2
-# b. Temporal evolution of one component (the one in the title) of f_{data}$/$f_{model}
-# c. Temporal evolution of one component (the one in the title) of q
-# d. Plot of |f_{data} - f_{model}|
-# e. Scatter plot of experimental vs model connected correlations,
-#    with < x_i x_j >_{conn} =<x_i x_j > - < x_i > < x_j >
-# f. Comparison between histogram of experimental and model sums - Only if there are 
-#    'histosum_{d}_{label}.dat' and 'histosums_{d}_{label}.dat' with the histogram of real and shuffled data
-
+Note: the pdf file will have these pictures:
+a. Temporal evolution of ||f_{data} - f_{model}||^2
+b. Temporal evolution of one component (the one in the title) of f_{data}$/$f_{model}
+c. Temporal evolution of one component (the one in the title) of q
+d. Plot of |f_{data} - f_{model}|
+e. Scatter plot of experimental vs model connected correlations,
+   with < x_i x_j >_{conn} =<x_i x_j > - < x_i > < x_j >
+f. Comparison between histogram of experimental and model sums - Only if there are 
+   'histosum_{d}_{label}.dat' and 'histosums_{d}_{label}.dat' with the histogram of real and shuffled data
+'''
 #___________________________________________________________________________________________________________________
 #___________________________________________________________________________________________________________________
 
 
-from functions import *
 import itertools
 from matplotlib import pyplot as plt
 import numpy as np
@@ -40,6 +40,9 @@ from pathlib import Path
 import scipy.io
 import tensorflow as tf
 from tqdm import trange
+
+from functions import *
+
 plt.rcParams.update({'font.size': 20})
 
 #___________________________________________________________________________________________________________________
